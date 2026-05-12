@@ -1,0 +1,701 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Japandi 風格全室設計計畫與 3D 預覽</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Three.js -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <style>
+        body { font-family: 'Helvetica Neue', Arial, 'Noto Sans TC', sans-serif; background-color: #f4f1eb; color: #5c554b; }
+        .scrollbar-hide::-webkit-scrollbar { display: none; }
+        .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+        .tab-active { background-color: #e6dfd3; border-right: 4px solid #b59778; font-weight: bold; }
+        .tab-inactive { hover:background-color: #eae5dc; transition: all 0.3s ease; border-right: 4px solid transparent; }
+        #canvas-container { cursor: grab; }
+        #canvas-container:active { cursor: grabbing; }
+        .glass-panel { background: rgba(255, 255, 255, 0.85); backdrop-filter: blur(8px); }
+    </style>
+</head>
+<body class="h-screen w-screen overflow-hidden flex flex-col md:flex-row">
+
+    <!-- Sidebar / Navigation -->
+    <aside class="w-full md:w-64 bg-[#faf8f5] shadow-lg z-20 flex flex-col h-auto md:h-full border-r border-[#e0dcd5]">
+        <div class="p-6 border-b border-[#e0dcd5]">
+            <h1 class="text-xl font-bold text-[#4a443c] mb-2">Japandi 居家設計</h1>
+            <p class="text-xs text-[#8c857b]">總預算 80 萬 | 互動式空間藍圖</p>
+        </div>
+        <nav class="flex-1 overflow-y-auto py-4 flex md:flex-col gap-1 px-2" id="nav-tabs">
+            <!-- Tabs injected by JS -->
+        </nav>
+    </aside>
+
+    <!-- Main Content Area -->
+    <main class="flex-1 flex flex-col md:flex-row overflow-hidden relative">
+        
+        <!-- Text Content Panel -->
+        <div id="text-panel" class="w-full md:w-1/3 lg:w-2/5 h-1/2 md:h-full bg-[#fcfbf9] overflow-y-auto p-8 shadow-[4px_0_24px_rgba(0,0,0,0.02)] z-10 scrollbar-hide">
+            <div id="content-display" class="prose prose-stone max-w-none">
+                <!-- Content injected by JS -->
+            </div>
+        </div>
+
+        <!-- 3D Canvas / Placeholder Panel -->
+        <div id="visual-panel" class="w-full md:w-2/3 lg:w-3/5 h-1/2 md:h-full relative bg-[#f4f1eb]">
+            <!-- Loading -->
+            <div id="loading" class="absolute inset-0 flex items-center justify-center text-[#8c857b] z-20 bg-[#f4f1eb] transition-opacity duration-500">
+                <span class="animate-pulse">載入 3D 場景中...</span>
+            </div>
+            
+            <!-- No 3D Placeholder -->
+            <div id="no-3d-placeholder" class="hidden absolute inset-0 flex flex-col items-center justify-center text-[#8c857b] z-10 bg-[#f4f1eb]">
+                <svg class="w-16 h-16 mb-4 text-[#dcd5cc]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                <p>此區域保留未來彈性，暫無 3D 模型</p>
+            </div>
+
+            <!-- 3D UI Overlay -->
+            <div id="ui-overlay" class="absolute top-4 right-4 glass-panel p-4 rounded-xl shadow-sm z-10 pointer-events-none hidden md:block border border-[#e8ddcc]">
+                <h3 id="ui-title" class="font-bold text-[#5c554b] mb-2 text-sm">空間導覽</h3>
+                <div id="ui-legends" class="text-xs text-[#8c857b] space-y-1 mb-3"></div>
+                <div class="pt-2 border-t border-[#e0dcd5] text-[10px] text-[#a39d96]">
+                    🖱️ 左鍵：旋轉 | 滾輪：縮放 | 右鍵：平移
+                </div>
+            </div>
+
+            <!-- WebGL Canvas -->
+            <canvas id="webgl-canvas" class="w-full h-full block"></canvas>
+        </div>
+    </main>
+
+    <script>
+        // --- Data Structure ---
+        const designData = [
+            {
+                id: 'concept',
+                title: '核心理念與玄關',
+                icon: '⛩️',
+                has3D: true,
+                legends: ['⬛ 仿岩石磁磚落塵區', '🟫 寬間距橡木格柵', '⬜ 霧面米褐色懸空鞋櫃', '💡 端景平台與暖黃光源'],
+                text: `
+                    <h2 class="text-2xl font-bold text-[#4a443c] mb-4 border-b pb-2">設計核心理念</h2>
+                    <p class="mb-6 leading-relaxed text-sm">本計畫旨在融合日本「侘寂（Wabi-sabi）」的質樸寧靜與北歐「斯堪地那維亞（Scandinavian）」的實用機能，打造出名為 <strong>Japandi</strong> 的居家風格。整體空間以溫暖的大地色系為主軸，搭配天然橡木、棉麻織品與特殊塗料，在 <strong>80 萬</strong>的裝潢預算內，為一家四口構築一個舒適、溫馨的避風港。</p>
+                    
+                    <h3 class="text-lg font-bold text-[#5c554b] mt-6 mb-3 flex items-center"><span class="mr-2">1.</span> 玄關落塵區 (二進式設計)</h3>
+                    <ul class="space-y-3 text-sm list-disc pl-5 text-[#6b6358]">
+                        <li><strong>地坪材質：</strong>鋪設帶有自然肌理的「仿岩石磁磚」，展現現代俐落感且易於清潔保養。</li>
+                        <li><strong>空間界定：</strong>與室內木地板交界處採用「平緩無高低差的金屬收邊條」；並運用「間距較寬的純橡木格柵」作為屏風，展現大氣通透的視覺張力，將自然採光引入落塵區。</li>
+                        <li><strong>收納機能：</strong>側邊規劃頂天立地的「霧面米褐色鞋櫃」與「隱藏式汙衣櫃」，採無把手懸空設計以維持極簡視覺。</li>
+                        <li><strong>氛圍營造：</strong>鞋櫃中段留設端景平台，上方點綴暖黃色光源，營造沉靜溫暖的返家儀式感。</li>
+                    </ul>
+                `
+            },
+            {
+                id: 'living',
+                title: '客廳與開放式書房',
+                icon: '🛋️',
+                has3D: true,
+                legends: ['🪨 清水模電視牆', '🚪 左側懸空收納櫃', '✨ 底層連貫 LED 燈帶', '📖 後方長型書桌', '🗄️ 左開放/右門片收納牆'],
+                text: `
+                    <h3 class="text-xl font-bold text-[#4a443c] mb-4 border-b pb-2">2. 客廳與開放式書房 (公領域核心)</h3>
+                    
+                    <h4 class="font-bold text-[#5c554b] mt-4 mb-2">電視牆面與收納</h4>
+                    <ul class="space-y-2 text-sm list-disc pl-5 text-[#6b6358] mb-4">
+                        <li>主牆塗佈帶有細膩手作紋理的「清水模特殊漆」，沉穩襯托 65 吋電視。</li>
+                        <li><strong>左側規劃兩排頂天的「霧面懸空收納櫃」</strong>，大幅提升公領域收納機能。</li>
+                        <li>下方配置一字型「懸空橡木電視櫃」，並以長虹玻璃或藤編門片隱藏視聽設備。</li>
+                    </ul>
+
+                    <h4 class="font-bold text-[#5c554b] mt-4 mb-2">光影層次 (重點)</h4>
+                    <p class="text-sm text-[#6b6358] mb-4 bg-[#f4f1eb] p-3 rounded-lg border border-[#e8ddcc]">左側懸空收納櫃與電視櫃的<strong>底部加入一整排連貫的 LED 暖光燈帶</strong>，不僅營造出輕盈的漂浮感，夜晚也能作為柔和的間接照明。</p>
+
+                    <h4 class="font-bold text-[#5c554b] mt-4 mb-2">沙發與軟裝</h4>
+                    <p class="text-sm text-[#6b6358] mb-4">配置 260 公分長的大地色系「一字型貓抓布沙發」，搭配低矮實木茶几與輕柔透光的「棉麻紗簾」。</p>
+
+                    <h4 class="font-bold text-[#5c554b] mt-4 mb-2">開放式閱覽區 (沙發後方)</h4>
+                    <ul class="space-y-2 text-sm list-disc pl-5 text-[#6b6358]">
+                        <li>捨棄上半部格柵，僅以「純粹的半高牆」界定客廳與書房，讓視覺完全無阻礙。</li>
+                        <li>緊貼半高牆設立面向客廳的加長型橡木書桌。</li>
+                        <li><strong>書桌後方規劃一整面收納牆 (共五排)：</strong>左側三排為「開放式橡木層架」以展示收藏與書籍（靠近落地窗享有光影）；右側兩排則搭配「霧面系統門片」用以隱藏雜物，整體動線乾淨俐落。</li>
+                    </ul>
+                `
+            },
+            {
+                id: 'kitchen',
+                title: '餐廚空間',
+                icon: '🍳',
+                has3D: true,
+                legends: ['🟫 橡木包覆一字型中島', '⬜ 淺灰石英石檯面', '💡 霧面燕麥色金屬吊燈', '🪵 垂直擺放實木餐桌'],
+                text: `
+                    <h3 class="text-xl font-bold text-[#4a443c] mb-4 border-b pb-2">3. 餐廚空間</h3>
+                    <ul class="space-y-4 text-sm list-none text-[#6b6358]">
+                        <li class="bg-white p-4 rounded-lg shadow-sm border border-[#f0ece1]">
+                            <strong class="block text-[#5c554b] mb-1">廚房格局</strong>
+                            維持開放式設計，以放大公領域的空間感與通透度。
+                        </li>
+                        <li class="bg-white p-4 rounded-lg shadow-sm border border-[#f0ece1]">
+                            <strong class="block text-[#5c554b] mb-1">機能中島</strong>
+                            增設「橡木包覆一字型中島」搭配淺灰石英石檯面，內側規劃抽拉層板收納電器。
+                        </li>
+                        <li class="bg-white p-4 rounded-lg shadow-sm border border-[#f0ece1]">
+                            <strong class="block text-[#5c554b] mb-1">用餐區域</strong>
+                            實木摺疊餐桌採<strong>「垂直於中島」</strong>的方式擺放，順著空間縱深延伸，讓兩側走道更寬敞流暢。
+                        </li>
+                        <li class="bg-white p-4 rounded-lg shadow-sm border border-[#f0ece1]">
+                            <strong class="block text-[#5c554b] mb-1">照明配置</strong>
+                            餐桌上方懸掛一盞「霧面燕麥色」北歐極簡金屬吊燈。
+                        </li>
+                    </ul>
+                `
+            },
+            {
+                id: 'bedroom',
+                title: '寧靜主臥室',
+                icon: '🛏️',
+                has3D: true,
+                legends: ['🌿 鼠尾草綠主牆', '🛏️ 橡木低底盤實木床', '🚪 床尾霧面米灰衣櫃', '🪞 床尾左側橡木梳妝檯'],
+                text: `
+                    <h3 class="text-xl font-bold text-[#4a443c] mb-4 border-b pb-2">4. 主臥室 (寧靜休憩)</h3>
+                    
+                    <div class="space-y-4 text-sm text-[#6b6358]">
+                        <div>
+                            <strong class="text-[#5c554b]">色彩計畫：</strong>
+                            主牆面漆上沉穩的「鼠尾草綠」，將大自然的靜謐氣息引入室內。
+                        </div>
+                        <div>
+                            <strong class="text-[#5c554b]">睡眠區域：</strong>
+                            搭配橡木低底盤實木床架與米色系水洗棉麻床包，床頭兩側點綴散發柔和暈光的「陶瓷壁燈」。
+                        </div>
+                        
+                        <div class="mt-6">
+                            <strong class="block text-base text-[#5c554b] mb-2 pb-1 border-b border-[#e0dcd5]">收納與梳妝 (床尾最佳化動線)</strong>
+                            <ul class="list-disc pl-5 space-y-2 mt-2">
+                                <li><strong>霧面米灰色大衣櫃</strong>規劃於「床尾右側」，提供兩人份的充足收納。</li>
+                                <li><strong>橡木梳妝檯</strong>整合於「床尾衣櫃的左側（靠近落地窗）」，享有極佳的自然採光，並搭配無邊框圓鏡與陶瓷小吊燈。</li>
+                            </ul>
+                        </div>
+                    </div>
+                `
+            },
+            {
+                id: 'others',
+                title: '儲藏區與電器整合牆',
+                icon: '📦',
+                has3D: true,
+                legends: ['🪵 左側木作隔間儲藏室', '🚪 中間通道門片', '☕ 右側鏤空電器櫃', '🗄️ 內部獨立層架與洞洞板'],
+                text: `
+                    <h3 class="text-xl font-bold text-[#4a443c] mb-4 border-b pb-2">5. 孩童房 (1歲與4歲寶貝)</h3>
+                    <ul class="space-y-2 text-sm list-disc pl-5 text-[#6b6358] mb-8">
+                        <li><strong>空間基調：</strong>牆面統一漆上溫暖純粹的「燕麥色」，保留未來彈性。</li>
+                        <li><strong>活動區域：</strong>木地板鋪設大面積「大地色防撞遊戲地墊」。</li>
+                        <li><strong>傢俱配置：</strong>添購符合蒙特梭利理念的低矮橡木收納櫃、藤編收納籃，以及圓角實木畫畫桌椅。</li>
+                    </ul>
+
+                    <h3 class="text-xl font-bold text-[#4a443c] mb-4 border-b pb-2">6. 儲藏區與電器櫃整合牆面</h3>
+                    <ul class="space-y-2 text-sm list-disc pl-5 text-[#6b6358] mb-8">
+                        <li><strong>左側木作隔間儲藏室：</strong>利用門外深邃的畸零空間，以溫潤的木作隔出一個獨立的隱藏儲藏室。打開與牆面融為一體的木門後，內部空間規劃了獨立層架與無底板設計，可輕鬆平推入 29 吋大行李箱，並以洞洞板收納直立家電。</li>
+                        <li><strong>通道門片：</strong>中間配置溫潤的純橡木門片，讓動線視覺保持俐落且具備 Japandi 的質樸感。</li>
+                        <li><strong>右側電器櫃：</strong>另一側規劃與中島呼應的大地色/橡木電器櫃，中段鏤空放置微波爐與咖啡機，完整餐廚空間的實用機能。</li>
+                    </ul>
+
+                    <h3 class="text-xl font-bold text-[#4a443c] mb-4 border-b pb-2">7. 全室五金與照明細節</h3>
+                    <ul class="space-y-2 text-sm list-disc pl-5 text-[#6b6358]">
+                        <li><strong>五金與面板：</strong>全室櫃體採「無把手設計」或隱藏式溝槽；開關面板選用俐落消光色系融入牆面。</li>
+                        <li><strong>照明色溫：</strong>主要光源以 3000K~3500K 暖白光與黃光為主，大量運用 LED 燈帶、壁燈、吊燈等間接照明豐富光影層次，避免刺眼直射光。</li>
+                    </ul>
+                `
+            }
+        ];
+
+        // --- UI Logic ---
+        let currentTabId = 'concept';
+
+        function initUI() {
+            const navContainer = document.getElementById('nav-tabs');
+            navContainer.innerHTML = '';
+
+            designData.forEach(tab => {
+                const btn = document.createElement('button');
+                btn.className = `w-full text-left px-4 py-3 text-sm rounded-r-lg mb-1 flex items-center gap-3 ${tab.id === currentTabId ? 'tab-active' : 'tab-inactive text-[#8c857b]'}`;
+                btn.onclick = () => switchTab(tab.id);
+                btn.innerHTML = `<span class="text-lg">${tab.icon}</span> <span class="truncate">${tab.title}</span>`;
+                navContainer.appendChild(btn);
+            });
+
+            renderContent();
+        }
+
+        function switchTab(id) {
+            currentTabId = id;
+            initUI(); 
+            renderContent();
+            
+            const tabData = designData.find(t => t.id === id);
+            if(tabData.has3D) {
+                document.getElementById('no-3d-placeholder').classList.add('hidden');
+                document.getElementById('ui-overlay').classList.remove('hidden');
+                document.getElementById('webgl-canvas').style.display = 'block';
+                document.getElementById('loading').style.display = 'flex';
+                setTimeout(() => switch3DScene(id), 50); 
+            } else {
+                document.getElementById('no-3d-placeholder').classList.remove('hidden');
+                document.getElementById('ui-overlay').classList.add('hidden');
+                document.getElementById('webgl-canvas').style.display = 'none';
+            }
+        }
+
+        function renderContent() {
+            const tabData = designData.find(t => t.id === currentTabId);
+            
+            const contentDisplay = document.getElementById('content-display');
+            contentDisplay.innerHTML = tabData.text;
+            document.getElementById('text-panel').scrollTop = 0;
+
+            if(tabData.has3D) {
+                document.getElementById('ui-title').innerText = tabData.title + ' 3D 模型';
+                const legendsHtml = tabData.legends.map(l => `<p>${l}</p>`).join('');
+                document.getElementById('ui-legends').innerHTML = legendsHtml;
+            }
+        }
+
+        // --- Three.js Logic ---
+        let scene, camera, renderer, controls;
+        let animationId;
+
+        const mats = {};
+
+        function initThreeJS() {
+            const canvas = document.getElementById('webgl-canvas');
+            const visualPanel = document.getElementById('visual-panel');
+
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color('#f4f1eb');
+            scene.fog = new THREE.FogExp2('#f4f1eb', 0.02);
+
+            camera = new THREE.PerspectiveCamera(45, visualPanel.clientWidth / visualPanel.clientHeight, 0.1, 100);
+
+            renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: true });
+            renderer.setSize(visualPanel.clientWidth, visualPanel.clientHeight);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            renderer.shadowMap.enabled = true;
+            renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+            renderer.outputEncoding = THREE.sRGBEncoding;
+
+            controls = new THREE.OrbitControls(camera, renderer.domElement);
+            controls.enableDamping = true;
+            controls.dampingFactor = 0.05;
+
+            // Initialize Shared Materials
+            mats.woodFloor = new THREE.MeshStandardMaterial({ color: '#c5b4a0', roughness: 0.7 });
+            mats.stoneFloor = new THREE.MeshStandardMaterial({ color: '#9e9a96', roughness: 0.9 });
+            mats.oakWood = new THREE.MeshStandardMaterial({ color: '#b59778', roughness: 0.7 });
+            mats.wall = new THREE.MeshStandardMaterial({ color: '#faf8f5', roughness: 0.9 });
+            mats.concreteWall = new THREE.MeshStandardMaterial({ color: '#a19f9d', roughness: 0.95 });
+            mats.sageWall = new THREE.MeshStandardMaterial({ color: '#8d9c8b', roughness: 0.95 });
+            mats.cabinetMat = new THREE.MeshStandardMaterial({ color: '#e6dfd3', roughness: 0.8 });
+            mats.greyCabinet = new THREE.MeshStandardMaterial({ color: '#eae4db', roughness: 0.8 }); 
+            mats.metal = new THREE.MeshStandardMaterial({ color: '#d1c7bd', metalness: 0.6, roughness: 0.4 });
+            mats.curtain = new THREE.MeshStandardMaterial({ color: '#f0ece1', roughness: 1.0, transparent: true, opacity: 0.85, side: THREE.DoubleSide });
+            mats.ledStrip = new THREE.MeshStandardMaterial({ color: '#ffddaa', emissive: '#ffbba0', emissiveIntensity: 0.8 });
+            mats.sofa = new THREE.MeshStandardMaterial({ color: '#d6cdbd', roughness: 1.0 });
+            mats.ceramic = new THREE.MeshStandardMaterial({ color: '#f0ece1', roughness: 0.3 });
+            mats.bedding = new THREE.MeshStandardMaterial({ color: '#e6ded3', roughness: 0.95 });
+            mats.mirror = new THREE.MeshStandardMaterial({ color: '#eeeeee', roughness: 0.1, metalness: 0.8 });
+            mats.earthCabinet = new THREE.MeshStandardMaterial({ color: '#c2b5a3', roughness: 0.9 }); 
+            mats.luggageMat = new THREE.MeshStandardMaterial({ color: '#4a4a4a', roughness: 0.6 }); 
+            mats.pegboardMat = new THREE.MeshStandardMaterial({ color: '#d1c2b0', roughness: 0.8 }); 
+
+            window.addEventListener('resize', onWindowResize);
+
+            switch3DScene(currentTabId);
+            animate();
+        }
+
+        function clearScene() {
+            while(scene.children.length > 0){ 
+                const object = scene.children[0];
+                scene.remove(object); 
+            }
+            scene.fog = new THREE.FogExp2('#f4f1eb', 0.03);
+        }
+
+        function setupBasicLighting() {
+            const ambientLight = new THREE.AmbientLight('#ffffff', 0.5);
+            scene.add(ambientLight);
+
+            const dirLight = new THREE.DirectionalLight('#fff5e6', 0.7);
+            dirLight.position.set(4, 6, 3);
+            dirLight.castShadow = true;
+            dirLight.shadow.mapSize.width = 2048;
+            dirLight.shadow.mapSize.height = 2048;
+            dirLight.shadow.bias = -0.0005;
+            scene.add(dirLight);
+        }
+
+        function switch3DScene(id) {
+            clearScene();
+            setupBasicLighting();
+
+            if (id === 'concept') buildEntryway();
+            else if (id === 'living') buildLivingRoom();
+            else if (id === 'kitchen') buildKitchen();
+            else if (id === 'bedroom') buildMasterBedroom();
+            else if (id === 'others') buildStorageRoom();
+
+            controls.update();
+            setTimeout(() => { document.getElementById('loading').style.display = 'none'; }, 200);
+        }
+
+        // --- Scene Builders ---
+        function buildEntryway() {
+            camera.position.set(2.5, 2.5, 4.5);
+            controls.target.set(0, 1, 0);
+
+            const entrywayFloor = new THREE.Mesh(new THREE.PlaneGeometry(3, 2), mats.stoneFloor);
+            entrywayFloor.rotation.x = -Math.PI / 2;
+            entrywayFloor.position.set(0, 0, 1);
+            entrywayFloor.receiveShadow = true;
+            scene.add(entrywayFloor);
+
+            const indoorFloor = new THREE.Mesh(new THREE.PlaneGeometry(3, 3), mats.woodFloor);
+            indoorFloor.rotation.x = -Math.PI / 2;
+            indoorFloor.position.set(0, 0, -1.5);
+            indoorFloor.receiveShadow = true;
+            scene.add(indoorFloor);
+
+            const metalStrip = new THREE.Mesh(new THREE.BoxGeometry(3, 0.005, 0.02), mats.metal);
+            metalStrip.position.set(0, 0.0025, 0);
+            scene.add(metalStrip);
+
+            const leftWall = new THREE.Mesh(new THREE.BoxGeometry(0.2, 2.8, 5), mats.wall);
+            leftWall.position.set(-1.6, 1.4, -0.5);
+            leftWall.receiveShadow = true;
+            leftWall.castShadow = true;
+            scene.add(leftWall);
+
+            const cabBottom = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.9, 2), mats.cabinetMat);
+            cabBottom.position.set(-1.25, 0.5, 1); 
+            cabBottom.castShadow = true; cabBottom.receiveShadow = true;
+            scene.add(cabBottom);
+
+            const cabTop = new THREE.Mesh(new THREE.BoxGeometry(0.5, 1.2, 2), mats.cabinetMat);
+            cabTop.position.set(-1.25, 2.0, 1);
+            cabTop.castShadow = true; cabTop.receiveShadow = true;
+            scene.add(cabTop);
+
+            const cabBack = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.5, 2), mats.woodFloor);
+            cabBack.position.set(-1.45, 1.15, 1);
+            scene.add(cabBack);
+
+            const alcoveLight = new THREE.PointLight('#ffddaa', 0.6, 2.5);
+            alcoveLight.position.set(-1.1, 1.4, -0.2);
+            scene.add(alcoveLight);
+            
+            const vase = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.04, 0.15, 32), new THREE.MeshStandardMaterial({ color: '#8a8277' }));
+            vase.position.set(-1.25, 1.025, 1.2);
+            scene.add(vase);
+
+            const gap = 0.22; 
+            for(let i=0; i<6; i++) {
+                const slat = new THREE.Mesh(new THREE.BoxGeometry(0.06, 2.8, 0.12), mats.oakWood);
+                slat.position.set(0.2 + (i * gap), 1.4, 0);
+                slat.castShadow = true; slat.receiveShadow = true;
+                scene.add(slat);
+            }
+        }
+
+        function buildLivingRoom() {
+            camera.position.set(-3.5, 2.5, 5);
+            controls.target.set(0, 1, 0);
+            scene.fog = new THREE.FogExp2('#f4f1eb', 0.02);
+
+            scene.children[1].position.set(-5, 4, 2); 
+            const wallLight = new THREE.SpotLight('#ffeacc', 0.5, 5, Math.PI/4, 0.5, 1);
+            wallLight.position.set(0, 3, -2.5);
+            wallLight.target.position.set(0, 1.5, -3);
+            scene.add(wallLight); scene.add(wallLight.target);
+
+            const floor = new THREE.Mesh(new THREE.PlaneGeometry(12, 12), mats.woodFloor);
+            floor.rotation.x = -Math.PI / 2; floor.receiveShadow = true;
+            scene.add(floor);
+
+            const tvWall = new THREE.Mesh(new THREE.BoxGeometry(6, 3, 0.2), mats.concreteWall);
+            tvWall.position.set(0, 1.5, -3); tvWall.receiveShadow = true;
+            scene.add(tvWall);
+
+            const curtain = new THREE.Mesh(new THREE.BoxGeometry(0.1, 2.9, 6), mats.curtain);
+            curtain.position.set(-3, 1.45, 0); curtain.receiveShadow = true; curtain.castShadow = true;
+            scene.add(curtain);
+
+            const cabGroup = new THREE.Group();
+            const cab1 = new THREE.Mesh(new THREE.BoxGeometry(0.6, 2.6, 0.4), mats.greyCabinet);
+            cab1.position.set(-1.5, 1.5, -2.8); cab1.castShadow = true; cab1.receiveShadow = true; cabGroup.add(cab1);
+            const cab2 = new THREE.Mesh(new THREE.BoxGeometry(0.6, 2.6, 0.4), mats.greyCabinet);
+            cab2.position.set(-2.1, 1.5, -2.8); cab2.castShadow = true; cab2.receiveShadow = true; cabGroup.add(cab2);
+            
+            const ledStrip1 = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.02, 0.05), mats.ledStrip);
+            ledStrip1.position.set(-1.8, 0.19, -2.75); cabGroup.add(ledStrip1);
+            [-2.2, -1.8, -1.4].forEach(x => {
+                const l = new THREE.PointLight('#ffbba0', 0.3, 2.0); l.position.set(x, 0.1, -2.7); cabGroup.add(l);
+            });
+            scene.add(cabGroup);
+
+            const tvGroup = new THREE.Group();
+            const tvCab = new THREE.Mesh(new THREE.BoxGeometry(2.4, 0.25, 0.4), mats.oakWood);
+            tvCab.position.set(0, 0.4, -2.8); tvCab.castShadow = true; tvCab.receiveShadow = true; tvGroup.add(tvCab);
+            const tvLed = new THREE.Mesh(new THREE.BoxGeometry(2.2, 0.02, 0.05), mats.ledStrip);
+            tvLed.position.set(0, 0.265, -2.75); tvGroup.add(tvLed);
+            [-0.8, 0, 0.8].forEach(x => {
+                const l = new THREE.PointLight('#ffbba0', 0.4, 2.0); l.position.set(x, 0.1, -2.7); tvGroup.add(l);
+            });
+            scene.add(tvGroup);
+
+            const tv = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.9, 0.05), new THREE.MeshStandardMaterial({ color: '#1a1a1a', roughness: 0.2 }));
+            tv.position.set(0, 1.3, -2.88); scene.add(tv);
+
+            const sofaGrp = new THREE.Group();
+            const sSeat = new THREE.Mesh(new THREE.BoxGeometry(2.6, 0.4, 0.9), mats.sofa); sSeat.position.set(0, 0.2, 0); sSeat.castShadow=true; sofaGrp.add(sSeat);
+            const sBack = new THREE.Mesh(new THREE.BoxGeometry(2.6, 0.5, 0.2), mats.sofa); sBack.position.set(0, 0.65, 0.35); sBack.castShadow=true; sofaGrp.add(sBack);
+            sofaGrp.position.set(0, 0, -0.3);
+            scene.add(sofaGrp);
+
+            const cTable = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.4, 0.35, 32), mats.oakWood);
+            cTable.position.set(0, 0.175, -1.2); cTable.castShadow=true; scene.add(cTable);
+
+            const halfWall = new THREE.Mesh(new THREE.BoxGeometry(2.6, 1.0, 0.15), mats.wall);
+            halfWall.position.set(0, 0.5, 0.3); halfWall.castShadow=true; scene.add(halfWall);
+
+            const desk = new THREE.Mesh(new THREE.BoxGeometry(2.6, 0.05, 0.5), mats.oakWood);
+            desk.position.set(0, 0.75, 0.625); desk.castShadow=true; scene.add(desk);
+            const dLegL = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.75, 0.45), mats.oakWood); dLegL.position.set(-1.275, 0.375, 0.65); scene.add(dLegL);
+            const dLegR = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.75, 0.45), mats.oakWood); dLegR.position.set(1.275, 0.375, 0.65); scene.add(dLegR);
+
+            const colX = [-1.8, -0.9, 0, 0.9, 1.8];
+            for(let i=0; i<5; i++) {
+                if(i >= 3) {
+                    const closedCab = new THREE.Mesh(new THREE.BoxGeometry(0.9, 2.8, 0.4), mats.greyCabinet);
+                    closedCab.position.set(colX[i], 1.4, 2.8); closedCab.castShadow=true; scene.add(closedCab);
+                } else {
+                    const backP = new THREE.Mesh(new THREE.BoxGeometry(0.9, 2.8, 0.02), mats.oakWood); backP.position.set(colX[i], 1.4, 2.99); scene.add(backP);
+                    const sideR = new THREE.Mesh(new THREE.BoxGeometry(0.02, 2.8, 0.4), mats.oakWood); sideR.position.set(colX[i]+0.44, 1.4, 2.8); scene.add(sideR);
+                    if(i===0){ const sideL = new THREE.Mesh(new THREE.BoxGeometry(0.02, 2.8, 0.4), mats.oakWood); sideL.position.set(colX[i]-0.44, 1.4, 2.8); scene.add(sideL); }
+                    for(let j=0; j<=5; j++){
+                        const shelf = new THREE.Mesh(new THREE.BoxGeometry(0.86, 0.02, 0.38), mats.oakWood);
+                        shelf.position.set(colX[i], Math.max(0.01, j*(2.8/6)), 2.79); scene.add(shelf);
+                    }
+                }
+            }
+        }
+
+        function buildKitchen() {
+            camera.position.set(0, 2.5, 6);
+            controls.target.set(0, 0.8, 0);
+            
+            const floor = new THREE.Mesh(new THREE.PlaneGeometry(10, 10), mats.woodFloor);
+            floor.rotation.x = -Math.PI/2; floor.receiveShadow=true; scene.add(floor);
+            
+            const backWall = new THREE.Mesh(new THREE.BoxGeometry(8, 3, 0.2), mats.wall);
+            backWall.position.set(0, 1.5, -2.5); scene.add(backWall);
+
+            const kBase = new THREE.Mesh(new THREE.BoxGeometry(4, 0.9, 0.6), mats.greyCabinet); kBase.position.set(0, 0.45, -2.1); scene.add(kBase);
+            const kTop = new THREE.Mesh(new THREE.BoxGeometry(4, 0.8, 0.35), mats.greyCabinet); kTop.position.set(0, 2.2, -2.225); scene.add(kTop);
+
+            const islandBase = new THREE.Mesh(new THREE.BoxGeometry(2.2, 0.86, 0.8), mats.oakWood); islandBase.position.set(0, 0.43, -0.5); islandBase.castShadow=true; scene.add(islandBase);
+            const islandTop = new THREE.Mesh(new THREE.BoxGeometry(2.25, 0.04, 0.85), new THREE.MeshStandardMaterial({color:'#e0dedc'})); islandTop.position.set(0, 0.88, -0.5); scene.add(islandTop);
+
+            const tTop = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.04, 1.6), mats.oakWood); tTop.position.set(0, 0.73, 1.2); tTop.castShadow=true; scene.add(tTop);
+            [[-0.3, 1.9], [0.3, 1.9], [-0.3, 0.5], [0.3, 0.5]].forEach(p => {
+                const leg = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.71, 0.06), mats.oakWood); leg.position.set(p[0], 0.355, p[1]); scene.add(leg);
+            });
+
+            [[-0.55, 0.9], [-0.55, 1.5], [0.55, 0.9], [0.55, 1.5]].forEach(p => {
+                const seat = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.05, 0.4), mats.greyCabinet); seat.position.set(p[0], 0.45, p[1]); seat.castShadow=true; scene.add(seat);
+            });
+
+            const pendantLight = new THREE.PointLight('#ffebcc', 0.8, 4); pendantLight.position.set(0, 1.6, 1.2); scene.add(pendantLight);
+            const shade = new THREE.Mesh(new THREE.ConeGeometry(0.25, 0.2, 32), new THREE.MeshStandardMaterial({color:'#dcd5cc'})); shade.position.set(0, 1.7, 1.2); scene.add(shade);
+            const wire = new THREE.Mesh(new THREE.CylinderGeometry(0.005, 0.005, 1.3), new THREE.MeshBasicMaterial({color:'#333'})); wire.position.set(0, 2.35, 1.2); scene.add(wire);
+        }
+
+        function buildMasterBedroom() {
+            camera.position.set(-2, 2.2, 1.5); 
+            controls.target.set(0, 1, -1);
+            
+            scene.children[1].position.set(-5, 4, 1);
+
+            const floor = new THREE.Mesh(new THREE.PlaneGeometry(10, 10), mats.woodFloor);
+            floor.rotation.x = -Math.PI/2; scene.add(floor);
+
+            const mainWall = new THREE.Mesh(new THREE.BoxGeometry(8, 3.2, 0.2), mats.sageWall); mainWall.position.set(0, 1.6, -3); scene.add(mainWall);
+            const rightWall = new THREE.Mesh(new THREE.BoxGeometry(0.2, 3.2, 8), mats.wall); rightWall.position.set(3.5, 1.6, 0); scene.add(rightWall);
+            const frontWall = new THREE.Mesh(new THREE.BoxGeometry(8, 3.2, 0.2), mats.wall); frontWall.position.set(0, 1.6, 2.5); scene.add(frontWall);
+
+            const curtain = new THREE.Mesh(new THREE.BoxGeometry(0.1, 3.1, 4), mats.curtain); curtain.position.set(-3.5, 1.55, -1); scene.add(curtain);
+
+            const bedBase = new THREE.Mesh(new THREE.BoxGeometry(2.0, 0.2, 2.2), mats.oakWood); bedBase.position.set(0, 0.1, -1.8); bedBase.castShadow=true; scene.add(bedBase);
+            const headboard = new THREE.Mesh(new THREE.BoxGeometry(2.2, 0.8, 0.08), mats.oakWood); headboard.position.set(0, 0.4, -2.86); scene.add(headboard);
+            const mattress = new THREE.Mesh(new THREE.BoxGeometry(1.8, 0.25, 2.0), mats.bedding); mattress.position.set(0, 0.325, -1.8); scene.add(mattress);
+            
+            const scL = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.05, 0.15, 32), mats.ceramic); scL.rotation.x=Math.PI/2; scL.position.set(-1.3, 1.5, -2.85); scene.add(scL);
+            const scR = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.05, 0.15, 32), mats.ceramic); scR.rotation.x=Math.PI/2; scR.position.set(1.3, 1.5, -2.85); scene.add(scR);
+            const sLightL = new THREE.PointLight('#ffddaa', 0.5, 3); sLightL.position.set(-1.3, 1.6, -2.8); scene.add(sLightL);
+            const sLightR = new THREE.PointLight('#ffddaa', 0.5, 3); sLightR.position.set(1.3, 1.6, -2.8); scene.add(sLightR);
+
+            const wardWidth = 2.4;
+            const wardrobe = new THREE.Mesh(new THREE.BoxGeometry(wardWidth, 2.9, 0.6), mats.greyCabinet);
+            wardrobe.position.set(0.5, 1.45, 2.1); wardrobe.castShadow=true; scene.add(wardrobe);
+
+            const vanityDesk = new THREE.Mesh(new THREE.BoxGeometry(1.0, 0.04, 0.45), mats.oakWood); vanityDesk.position.set(-1.5, 0.75, 2.175); vanityDesk.castShadow=true; scene.add(vanityDesk);
+            const vLegL = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.75, 0.45), mats.oakWood); vLegL.position.set(-1.98, 0.375, 2.175); scene.add(vLegL);
+            const vLegR = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.75, 0.45), mats.oakWood); vLegR.position.set(-1.02, 0.375, 2.175); scene.add(vLegR);
+            const mirror = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.3, 0.02, 32), mats.mirror); mirror.rotation.x=Math.PI/2; mirror.position.set(-1.5, 1.3, 2.38); scene.add(mirror);
+            
+            const vLight = new THREE.PointLight('#ffebcc', 0.4, 2); vLight.position.set(-1.5, 1.6, 2.1); scene.add(vLight);
+            const pShade = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.12, 0.15, 32), mats.ceramic); pShade.position.set(-1.5, 1.7, 2.1); scene.add(pShade);
+            const stool = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, 0.45, 32), mats.bedding); stool.position.set(-1.5, 0.225, 1.7); stool.castShadow=true; scene.add(stool);
+        }
+
+        function buildStorageRoom() {
+            camera.position.set(0, 1.5, 4.8); 
+            controls.target.set(0, 1.3, -0.5); 
+            scene.fog = new THREE.FogExp2('#f4f1eb', 0.025);
+
+            const roomLight = new THREE.PointLight('#ffebcc', 0.8, 6);
+            roomLight.position.set(0, 2.5, 2);
+            scene.add(roomLight);
+            
+            // 內部儲藏室輔助光源
+            const innerLight = new THREE.PointLight('#ffddaa', 0.5, 4);
+            innerLight.position.set(-1.2, 2.2, -0.6);
+            scene.add(innerLight);
+
+            const floor = new THREE.Mesh(new THREE.PlaneGeometry(8, 6), mats.woodFloor);
+            floor.rotation.x = -Math.PI / 2; floor.receiveShadow = true;
+            scene.add(floor);
+
+            // 背牆 (大幅退後產生步入式深度)
+            const backWall = new THREE.Mesh(new THREE.BoxGeometry(6, 3, 0.2), mats.wall);
+            backWall.position.set(0, 1.5, -1.5); backWall.receiveShadow = true; scene.add(backWall);
+
+            // 隔間牆 (劃分左側儲藏室與中間通道)
+            const dividerWall = new THREE.Mesh(new THREE.BoxGeometry(0.1, 3, 1.3), mats.wall);
+            dividerWall.position.set(-0.6, 1.5, -0.85); dividerWall.receiveShadow = true; scene.add(dividerWall);
+
+            // 右側隔間牆 (劃分中間與右側)
+            const rightDividerWall = new THREE.Mesh(new THREE.BoxGeometry(0.1, 3, 1.3), mats.wall);
+            rightDividerWall.position.set(0.6, 1.5, -0.85); rightDividerWall.receiveShadow = true; scene.add(rightDividerWall);
+
+            // (1) 中間：通道門片 (與外部牆面齊平 z = -0.3)
+            const centerWallTop = new THREE.Mesh(new THREE.BoxGeometry(1.1, 0.8, 0.2), mats.wall);
+            centerWallTop.position.set(0, 2.6, -0.3); scene.add(centerWallTop);
+            
+            const doorGroup = new THREE.Group();
+            const door = new THREE.Mesh(new THREE.BoxGeometry(0.9, 2.2, 0.04), mats.oakWood);
+            door.position.set(0, 1.1, -0.3); door.castShadow = true; door.receiveShadow = true;
+            doorGroup.add(door);
+            
+            const handle = new THREE.Mesh(new THREE.BoxGeometry(0.02, 0.15, 0.03), mats.metal);
+            handle.position.set(0.35, 1.0, -0.27); doorGroup.add(handle);
+            scene.add(doorGroup);
+
+            // (2) 左側：木作隔間儲藏室 (Walk-in 空間)
+            const storageGroup = new THREE.Group();
+            storageGroup.position.set(-1.25, 0, 0); 
+            
+            // 木作隔間前牆 (將畸零空間完全包覆，對齊 z = -0.3)
+            const sWallLeft = new THREE.Mesh(new THREE.BoxGeometry(0.2, 3, 0.05), mats.oakWood);
+            sWallLeft.position.set(-0.55, 1.5, -0.3); storageGroup.add(sWallLeft);
+            const sWallRight = new THREE.Mesh(new THREE.BoxGeometry(0.1, 3, 0.05), mats.oakWood);
+            sWallRight.position.set(0.6, 1.5, -0.3); storageGroup.add(sWallRight);
+            const sWallTop = new THREE.Mesh(new THREE.BoxGeometry(1.05, 0.8, 0.05), mats.oakWood);
+            sWallTop.position.set(0.025, 2.6, -0.3); storageGroup.add(sWallTop);
+
+            // 儲藏室隱藏木門 (設定為向外開啟狀態，方便檢視內部)
+            const sDoorPivot = new THREE.Group();
+            sDoorPivot.position.set(0.55, 1.1, -0.3); // 鉸鏈在右側
+            const sFrontDoor = new THREE.Mesh(new THREE.BoxGeometry(1.05, 2.2, 0.04), mats.oakWood);
+            sFrontDoor.position.set(-0.525, 0, 0); // 門片相對於鉸鏈的位置
+            sFrontDoor.castShadow = true; sFrontDoor.receiveShadow = true;
+            sDoorPivot.add(sFrontDoor);
+            sDoorPivot.rotation.y = Math.PI / 2.2; // 開門角度
+            storageGroup.add(sDoorPivot);
+
+            // 內部：獨立收納層架 (藏在空間深處)
+            const shelfWidth = 1.0;
+            const shelfDepth = 0.4;
+            for(let i=0; i<4; i++) {
+                const shelf = new THREE.Mesh(new THREE.BoxGeometry(shelfWidth, 0.02, shelfDepth), mats.earthCabinet);
+                shelf.position.set(-0.05, 1.0 + i*0.45, -1.2);
+                shelf.castShadow = true; shelf.receiveShadow = true;
+                storageGroup.add(shelf);
+            }
+
+            // 行李箱 (平推入內部區)
+            const lugBody = new THREE.Mesh(new THREE.BoxGeometry(0.45, 0.73, 0.3), mats.luggageMat);
+            lugBody.position.set(0.1, 0.38, -1.0); lugBody.castShadow = true; storageGroup.add(lugBody);
+            
+            // 洞洞板與吸塵器 (內部左側牆)
+            const pbBase = new THREE.Mesh(new THREE.BoxGeometry(0.02, 1.4, 0.6), mats.pegboardMat);
+            pbBase.position.set(-0.6, 1.5, -1.0); storageGroup.add(pbBase);
+            const vacBody = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 0.6), mats.luggageMat);
+            vacBody.position.set(-0.5, 1.5, -1.0); vacBody.rotation.z = -Math.PI/12; storageGroup.add(vacBody);
+
+            scene.add(storageGroup);
+
+            // (3) 右側：中島型電器櫃
+            const appGroup = new THREE.Group();
+            appGroup.position.set(1.25, 0, 0);
+            const aCabWidth = 1.0;
+            const aCabDepth = 0.55;
+            
+            // 櫃體對齊整體的 z = -0.3
+            const aBase = new THREE.Mesh(new THREE.BoxGeometry(aCabWidth, 0.9, aCabDepth), mats.cabinetMat);
+            aBase.position.set(0, 0.45, -0.3 - aCabDepth/2); aBase.castShadow = true; aBase.receiveShadow = true;
+            appGroup.add(aBase);
+            
+            const aTop = new THREE.Mesh(new THREE.BoxGeometry(aCabWidth, 0.9, aCabDepth), mats.cabinetMat);
+            aTop.position.set(0, 2.15, -0.3 - aCabDepth/2); aTop.castShadow = true; aTop.receiveShadow = true;
+            appGroup.add(aTop);
+            
+            const aShelfBack = new THREE.Mesh(new THREE.BoxGeometry(aCabWidth, 0.8, 0.02), mats.oakWood);
+            aShelfBack.position.set(0, 1.3, -0.3 - aCabDepth + 0.01); appGroup.add(aShelfBack);
+            const aShelfSideL = new THREE.Mesh(new THREE.BoxGeometry(0.02, 0.8, aCabDepth), mats.oakWood);
+            aShelfSideL.position.set(-aCabWidth/2 + 0.01, 1.3, -0.3 - aCabDepth/2); appGroup.add(aShelfSideL);
+            const aShelfSideR = new THREE.Mesh(new THREE.BoxGeometry(0.02, 0.8, aCabDepth), mats.oakWood);
+            aShelfSideR.position.set(aCabWidth/2 - 0.01, 1.3, -0.3 - aCabDepth/2); appGroup.add(aShelfSideR);
+
+            const appLedLight = new THREE.PointLight('#ffbba0', 0.5, 1.5);
+            appLedLight.position.set(0, 1.6, -0.3 - aCabDepth/2 + 0.1); appGroup.add(appLedLight);
+
+            const oven = new THREE.Mesh(new THREE.BoxGeometry(0.45, 0.35, 0.35), new THREE.MeshStandardMaterial({color: '#2a2a2a', roughness: 0.2}));
+            oven.position.set(-0.2, 1.08, -0.3 - aCabDepth/2 + 0.05); oven.castShadow = true; appGroup.add(oven);
+            const coffee = new THREE.Mesh(new THREE.BoxGeometry(0.25, 0.35, 0.25), new THREE.MeshStandardMaterial({color: '#e0dedc', roughness: 0.3}));
+            coffee.position.set(0.25, 1.08, -0.3 - aCabDepth/2 + 0.1); coffee.castShadow = true; appGroup.add(coffee);
+
+            scene.add(appGroup);
+        }
+
+        // --- Render Loop & Events ---
+        function onWindowResize() {
+            const visualPanel = document.getElementById('visual-panel');
+            camera.aspect = visualPanel.clientWidth / visualPanel.clientHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(visualPanel.clientWidth, visualPanel.clientHeight);
+        }
+
+        function animate() {
+            animationId = requestAnimationFrame(animate);
+            if(controls) controls.update();
+            if(renderer && scene && camera) renderer.render(scene, camera);
+        }
+
+        // Init App
+        window.onload = () => {
+            initUI();
+            initThreeJS();
+        };
+    </script>
+</body>
+</html>
