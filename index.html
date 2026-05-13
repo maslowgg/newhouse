@@ -46,27 +46,27 @@
         <!-- 3D Canvas / Placeholder Panel -->
         <div id="visual-panel" class="w-full md:w-2/3 lg:w-3/5 h-1/2 md:h-full relative bg-[#f4f1eb]">
             <!-- Loading -->
-            <div id="loading" class="absolute inset-0 flex items-center justify-center text-[#8c857b] z-20 bg-[#f4f1eb] transition-opacity duration-500">
+            <div id="loading" class="absolute inset-0 flex items-center justify-center text-[#8c857b] z-20 bg-[#f4f1eb] transition-opacity duration-500 hidden">
                 <span class="animate-pulse">載入 3D 場景中...</span>
             </div>
             
-            <!-- No 3D Placeholder -->
+            <!-- No Image Placeholder -->
             <div id="no-3d-placeholder" class="hidden absolute inset-0 flex flex-col items-center justify-center text-[#8c857b] z-10 bg-[#f4f1eb]">
                 <svg class="w-16 h-16 mb-4 text-[#dcd5cc]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
-                <p>此區域保留未來彈性，暫無 3D 模型</p>
+                <p>此區域保留未來彈性，暫無圖面</p>
             </div>
 
-            <!-- 3D UI Overlay -->
+            <!-- UI Overlay -->
             <div id="ui-overlay" class="absolute top-4 right-4 glass-panel p-4 rounded-xl shadow-sm z-10 pointer-events-none hidden md:block border border-[#e8ddcc]">
                 <h3 id="ui-title" class="font-bold text-[#5c554b] mb-2 text-sm">空間導覽</h3>
                 <div id="ui-legends" class="text-xs text-[#8c857b] space-y-1 mb-3"></div>
-                <div class="pt-2 border-t border-[#e0dcd5] text-[10px] text-[#a39d96]">
+                <div id="ui-instruction" class="pt-2 border-t border-[#e0dcd5] text-[10px] text-[#a39d96]">
                     🖱️ 左鍵：旋轉 | 滾輪：縮放 | 右鍵：平移
                 </div>
             </div>
 
-            <!-- WebGL Canvas -->
-            <canvas id="webgl-canvas" class="w-full h-full block"></canvas>
+            <!-- WebGL Canvas (For 3D) -->
+            <canvas id="webgl-canvas" class="w-full h-full hidden"></canvas>
         </div>
     </main>
 
@@ -78,7 +78,7 @@
                 title: '核心理念與玄關',
                 icon: '⛩️',
                 has3D: true,
-                legends: ['⬛ 仿岩石磁磚落塵區', '🟫 寬間距橡木格柵', '⬜ 霧面米褐色懸空鞋櫃', '💡 端景平台與暖黃光源'],
+                legends: ['⬛ 仿岩石磁磚落塵區', '⬜ 霧面米褐色懸空鞋櫃', '🟫 純橡木格柵屏風', '💡 端景平台與暖黃光源'],
                 text: `
                     <h2 class="text-2xl font-bold text-[#4a443c] mb-4 border-b pb-2">設計核心理念</h2>
                     <p class="mb-6 leading-relaxed text-sm">本計畫旨在融合日本「侘寂（Wabi-sabi）」的質樸寧靜與北歐「斯堪地那維亞（Scandinavian）」的實用機能，打造出名為 <strong>Japandi</strong> 的居家風格。整體空間以溫暖的大地色系為主軸，搭配天然橡木、棉麻織品與特殊塗料，在 <strong>80 萬</strong>的裝潢預算內，為一家四口構築一個舒適、溫馨的避風港。</p>
@@ -86,8 +86,8 @@
                     <h3 class="text-lg font-bold text-[#5c554b] mt-6 mb-3 flex items-center"><span class="mr-2">1.</span> 玄關落塵區 (二進式設計)</h3>
                     <ul class="space-y-3 text-sm list-disc pl-5 text-[#6b6358]">
                         <li><strong>地坪材質：</strong>鋪設帶有自然肌理的「仿岩石磁磚」，展現現代俐落感且易於清潔保養。</li>
-                        <li><strong>空間界定：</strong>與室內木地板交界處採用「平緩無高低差的金屬收邊條」；並運用「間距較寬的純橡木格柵」作為屏風，展現大氣通透的視覺張力，將自然採光引入落塵區。</li>
-                        <li><strong>收納機能：</strong>側邊規劃頂天立地的「霧面米褐色鞋櫃」與「隱藏式汙衣櫃」，採無把手懸空設計以維持極簡視覺。</li>
+                        <li><strong>空間界定：</strong>與室內木地板交界處採用「平緩無高低差的金屬收邊條」。</li>
+                        <li><strong>收納與視覺：</strong>側邊規劃頂天的「霧面米褐色懸空鞋櫃」，右側緊密連接「純橡木格柵」，讓出入動線極其簡潔俐落，同時展現大氣通透的光影張力。</li>
                         <li><strong>氛圍營造：</strong>鞋櫃中段留設端景平台，上方點綴暖黃色光源，營造沉靜溫暖的返家儀式感。</li>
                     </ul>
                 `
@@ -103,22 +103,22 @@
                     
                     <h4 class="font-bold text-[#5c554b] mt-4 mb-2">電視牆面與收納</h4>
                     <ul class="space-y-2 text-sm list-disc pl-5 text-[#6b6358] mb-4">
-                        <li>主牆塗佈帶有細膩手作紋理的「清水模特殊漆」，沉穩襯托 65 吋電視。</li>
+                        <li>主牆塗佈帶有細膩手作紋理的「清水模特殊漆」，沉穩襯托電視。</li>
                         <li><strong>左側規劃兩排頂天的「霧面懸空收納櫃」</strong>，大幅提升公領域收納機能。</li>
                         <li>下方配置一字型「懸空橡木電視櫃」，並以長虹玻璃或藤編門片隱藏視聽設備。</li>
                     </ul>
 
                     <h4 class="font-bold text-[#5c554b] mt-4 mb-2">光影層次 (重點)</h4>
-                    <p class="text-sm text-[#6b6358] mb-4 bg-[#f4f1eb] p-3 rounded-lg border border-[#e8ddcc]">左側懸空收納櫃與電視櫃的<strong>底部加入一整排連貫的 LED 暖光燈帶</strong>，不僅營造出輕盈的漂浮感，夜晚也能作為柔和的間接照明。</p>
+                    <p class="text-sm text-[#6b6358] mb-4 bg-[#f4f1eb] p-3 rounded-lg border border-[#e8ddcc]">左側懸空收納櫃與電視櫃的<strong>底部加入一整排連貫的 LED 暖光燈帶</strong>，營造出輕盈的漂浮感。</p>
 
                     <h4 class="font-bold text-[#5c554b] mt-4 mb-2">沙發與軟裝</h4>
                     <p class="text-sm text-[#6b6358] mb-4">配置 260 公分長的大地色系「一字型貓抓布沙發」，搭配低矮實木茶几與輕柔透光的「棉麻紗簾」。</p>
 
                     <h4 class="font-bold text-[#5c554b] mt-4 mb-2">開放式閱覽區 (沙發後方)</h4>
                     <ul class="space-y-2 text-sm list-disc pl-5 text-[#6b6358]">
-                        <li>捨棄上半部格柵，僅以「純粹的半高牆」界定客廳與書房，讓視覺完全無阻礙。</li>
+                        <li>捨棄上半部格柵，僅以「純粹的半高牆」界定客廳與書房，視覺無阻礙。</li>
                         <li>緊貼半高牆設立面向客廳的加長型橡木書桌。</li>
-                        <li><strong>書桌後方規劃一整面收納牆 (共五排)：</strong>左側三排為「開放式橡木層架」以展示收藏與書籍（靠近落地窗享有光影）；右側兩排則搭配「霧面系統門片」用以隱藏雜物，整體動線乾淨俐落。</li>
+                        <li><strong>書桌後方規劃一整面收納牆 (共五排)：</strong>左側三排為「開放式橡木層架」以展示收藏與書籍；右側兩排則搭配「霧面系統門片」隱藏雜物。</li>
                     </ul>
                 `
             },
@@ -155,14 +155,14 @@
                 title: '寧靜主臥室',
                 icon: '🛏️',
                 has3D: true,
-                legends: ['🌿 鼠尾草綠主牆', '🛏️ 橡木低底盤實木床', '🚪 床尾霧面米灰衣櫃', '🪞 床尾左側橡木梳妝檯'],
+                legends: ['⚪ 純白明亮主牆', '🛏️ 橡木低底盤實木床', '🚪 床尾右側霧面衣櫃', '🪞 床尾左側橡木梳妝檯'],
                 text: `
                     <h3 class="text-xl font-bold text-[#4a443c] mb-4 border-b pb-2">4. 主臥室 (寧靜休憩)</h3>
                     
                     <div class="space-y-4 text-sm text-[#6b6358]">
                         <div>
                             <strong class="text-[#5c554b]">色彩計畫：</strong>
-                            主牆面漆上沉穩的「鼠尾草綠」，將大自然的靜謐氣息引入室內。
+                            主牆面採用乾淨的「純白色」，提升空間明亮度，並將視覺焦點保留給溫潤的木質傢俱。
                         </div>
                         <div>
                             <strong class="text-[#5c554b]">睡眠區域：</strong>
@@ -172,7 +172,7 @@
                         <div class="mt-6">
                             <strong class="block text-base text-[#5c554b] mb-2 pb-1 border-b border-[#e0dcd5]">收納與梳妝 (床尾最佳化動線)</strong>
                             <ul class="list-disc pl-5 space-y-2 mt-2">
-                                <li><strong>霧面米灰色大衣櫃</strong>規劃於「床尾右側」，提供兩人份的充足收納。</li>
+                                <li><strong>霧面米灰色大衣櫃</strong>規劃於「床尾右側」，提供充足收納且不壓迫。</li>
                                 <li><strong>橡木梳妝檯</strong>整合於「床尾衣櫃的左側（靠近落地窗）」，享有極佳的自然採光，並搭配無邊框圓鏡與陶瓷小吊燈。</li>
                             </ul>
                         </div>
@@ -186,31 +186,25 @@
                 has3D: true,
                 legends: ['🪵 左側木作隔間儲藏室', '🚪 中間通道門片', '☕ 右側鏤空電器櫃', '🗄️ 內部獨立層架與洞洞板'],
                 text: `
-                    <h3 class="text-xl font-bold text-[#4a443c] mb-4 border-b pb-2">5. 孩童房 (1歲與4歲寶貝)</h3>
+                    <h3 class="text-xl font-bold text-[#4a443c] mb-4 border-b pb-2">5. 儲藏區與電器櫃整合牆面</h3>
                     <ul class="space-y-2 text-sm list-disc pl-5 text-[#6b6358] mb-8">
-                        <li><strong>空間基調：</strong>牆面統一漆上溫暖純粹的「燕麥色」，保留未來彈性。</li>
-                        <li><strong>活動區域：</strong>木地板鋪設大面積「大地色防撞遊戲地墊」。</li>
-                        <li><strong>傢俱配置：</strong>添購符合蒙特梭利理念的低矮橡木收納櫃、藤編收納籃，以及圓角實木畫畫桌椅。</li>
+                        <li><strong>左側木作隔間儲藏室：</strong>利用門外深邃的畸零空間，以溫潤的木作隔出一個獨立的走入式儲藏室。隱藏門片打開後，內部空間規劃獨立層架與無底板設計，可平推入 29 吋大行李箱。</li>
+                        <li><strong>通道門片：</strong>中間配置溫潤的純橡木門片，與兩側木作結合，視覺極簡。</li>
+                        <li><strong>右側電器櫃：</strong>另一側規劃大地色/橡木電器櫃，中段鏤空放置微波爐與咖啡機，完整餐廚空間的機能。</li>
                     </ul>
 
-                    <h3 class="text-xl font-bold text-[#4a443c] mb-4 border-b pb-2">6. 儲藏區與電器櫃整合牆面</h3>
-                    <ul class="space-y-2 text-sm list-disc pl-5 text-[#6b6358] mb-8">
-                        <li><strong>左側木作隔間儲藏室：</strong>利用門外深邃的畸零空間，以溫潤的木作隔出一個獨立的隱藏儲藏室。打開與牆面融為一體的木門後，內部空間規劃了獨立層架與無底板設計，可輕鬆平推入 29 吋大行李箱，並以洞洞板收納直立家電。</li>
-                        <li><strong>通道門片：</strong>中間配置溫潤的純橡木門片，讓動線視覺保持俐落且具備 Japandi 的質樸感。</li>
-                        <li><strong>右側電器櫃：</strong>另一側規劃與中島呼應的大地色/橡木電器櫃，中段鏤空放置微波爐與咖啡機，完整餐廚空間的實用機能。</li>
-                    </ul>
-
-                    <h3 class="text-xl font-bold text-[#4a443c] mb-4 border-b pb-2">7. 全室五金與照明細節</h3>
+                    <h3 class="text-xl font-bold text-[#4a443c] mb-4 border-b pb-2">6. 孩童房與其他細節</h3>
                     <ul class="space-y-2 text-sm list-disc pl-5 text-[#6b6358]">
-                        <li><strong>五金與面板：</strong>全室櫃體採「無把手設計」或隱藏式溝槽；開關面板選用俐落消光色系融入牆面。</li>
-                        <li><strong>照明色溫：</strong>主要光源以 3000K~3500K 暖白光與黃光為主，大量運用 LED 燈帶、壁燈、吊燈等間接照明豐富光影層次，避免刺眼直射光。</li>
+                        <li><strong>孩童房：</strong>燕麥色牆面搭配大地色防撞地墊，保留未來彈性。</li>
+                        <li>全室櫃體採「無把手設計」或隱藏式溝槽。</li>
+                        <li>主要光源以 3000K~3500K 暖白光與黃光為主，大量運用 LED 燈帶間接照明。</li>
                     </ul>
                 `
             }
         ];
 
         // --- UI Logic ---
-        let currentTabId = 'concept';
+        let currentTabId = 'concept'; 
 
         function initUI() {
             const navContainer = document.getElementById('nav-tabs');
@@ -233,22 +227,31 @@
             renderContent();
             
             const tabData = designData.find(t => t.id === id);
+            
+            const webglCanvas = document.getElementById('webgl-canvas');
+            const uiOverlay = document.getElementById('ui-overlay');
+            const placeholder = document.getElementById('no-3d-placeholder');
+            const loading = document.getElementById('loading');
+
+            // 先隱藏所有畫布與提示
+            webglCanvas.style.display = 'none';
+            uiOverlay.style.display = 'none';
+            placeholder.style.display = 'none';
+            loading.style.display = 'none';
+
             if(tabData.has3D) {
-                document.getElementById('no-3d-placeholder').classList.add('hidden');
-                document.getElementById('ui-overlay').classList.remove('hidden');
-                document.getElementById('webgl-canvas').style.display = 'block';
-                document.getElementById('loading').style.display = 'flex';
+                // 顯示 3D
+                webglCanvas.style.display = 'block';
+                uiOverlay.style.display = 'block';
+                loading.style.display = 'flex';
                 setTimeout(() => switch3DScene(id), 50); 
             } else {
-                document.getElementById('no-3d-placeholder').classList.remove('hidden');
-                document.getElementById('ui-overlay').classList.add('hidden');
-                document.getElementById('webgl-canvas').style.display = 'none';
+                placeholder.style.display = 'flex';
             }
         }
 
         function renderContent() {
             const tabData = designData.find(t => t.id === currentTabId);
-            
             const contentDisplay = document.getElementById('content-display');
             contentDisplay.innerHTML = tabData.text;
             document.getElementById('text-panel').scrollTop = 0;
@@ -260,10 +263,9 @@
             }
         }
 
-        // --- Three.js Logic ---
+        // --- Three.js Logic (For 3D) ---
         let scene, camera, renderer, controls;
         let animationId;
-
         const mats = {};
 
         function initThreeJS() {
@@ -287,13 +289,13 @@
             controls.enableDamping = true;
             controls.dampingFactor = 0.05;
 
-            // Initialize Shared Materials
+            // 初始化材質
             mats.woodFloor = new THREE.MeshStandardMaterial({ color: '#c5b4a0', roughness: 0.7 });
             mats.stoneFloor = new THREE.MeshStandardMaterial({ color: '#9e9a96', roughness: 0.9 });
             mats.oakWood = new THREE.MeshStandardMaterial({ color: '#b59778', roughness: 0.7 });
             mats.wall = new THREE.MeshStandardMaterial({ color: '#faf8f5', roughness: 0.9 });
             mats.concreteWall = new THREE.MeshStandardMaterial({ color: '#a19f9d', roughness: 0.95 });
-            mats.sageWall = new THREE.MeshStandardMaterial({ color: '#8d9c8b', roughness: 0.95 });
+            mats.whiteWall = new THREE.MeshStandardMaterial({ color: '#ffffff', roughness: 0.95 }); // 新增純白牆面材質
             mats.cabinetMat = new THREE.MeshStandardMaterial({ color: '#e6dfd3', roughness: 0.8 });
             mats.greyCabinet = new THREE.MeshStandardMaterial({ color: '#eae4db', roughness: 0.8 }); 
             mats.metal = new THREE.MeshStandardMaterial({ color: '#d1c7bd', metalness: 0.6, roughness: 0.4 });
@@ -301,7 +303,7 @@
             mats.ledStrip = new THREE.MeshStandardMaterial({ color: '#ffddaa', emissive: '#ffbba0', emissiveIntensity: 0.8 });
             mats.sofa = new THREE.MeshStandardMaterial({ color: '#d6cdbd', roughness: 1.0 });
             mats.ceramic = new THREE.MeshStandardMaterial({ color: '#f0ece1', roughness: 0.3 });
-            mats.bedding = new THREE.MeshStandardMaterial({ color: '#e6ded3', roughness: 0.95 });
+            mats.bedding = new THREE.MeshStandardMaterial({ color: '#e6ded3', roughness: 0.95 }); // 棉麻布面材質
             mats.mirror = new THREE.MeshStandardMaterial({ color: '#eeeeee', roughness: 0.1, metalness: 0.8 });
             mats.earthCabinet = new THREE.MeshStandardMaterial({ color: '#c2b5a3', roughness: 0.9 }); 
             mats.luggageMat = new THREE.MeshStandardMaterial({ color: '#4a4a4a', roughness: 0.6 }); 
@@ -335,6 +337,8 @@
         }
 
         function switch3DScene(id) {
+            if(!designData.find(t => t.id === id)?.has3D) return;
+            
             clearScene();
             setupBasicLighting();
 
@@ -348,7 +352,7 @@
             setTimeout(() => { document.getElementById('loading').style.display = 'none'; }, 200);
         }
 
-        // --- Scene Builders ---
+        // --- Scene Builders (3D) ---
         function buildEntryway() {
             camera.position.set(2.5, 2.5, 4.5);
             controls.target.set(0, 1, 0);
@@ -371,18 +375,16 @@
 
             const leftWall = new THREE.Mesh(new THREE.BoxGeometry(0.2, 2.8, 5), mats.wall);
             leftWall.position.set(-1.6, 1.4, -0.5);
-            leftWall.receiveShadow = true;
-            leftWall.castShadow = true;
+            leftWall.receiveShadow = true; leftWall.castShadow = true;
             scene.add(leftWall);
 
+            // 頂天懸空收納櫃
             const cabBottom = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.9, 2), mats.cabinetMat);
-            cabBottom.position.set(-1.25, 0.5, 1); 
-            cabBottom.castShadow = true; cabBottom.receiveShadow = true;
+            cabBottom.position.set(-1.25, 0.5, 1); cabBottom.castShadow = true; cabBottom.receiveShadow = true;
             scene.add(cabBottom);
 
             const cabTop = new THREE.Mesh(new THREE.BoxGeometry(0.5, 1.2, 2), mats.cabinetMat);
-            cabTop.position.set(-1.25, 2.0, 1);
-            cabTop.castShadow = true; cabTop.receiveShadow = true;
+            cabTop.position.set(-1.25, 2.0, 1); cabTop.castShadow = true; cabTop.receiveShadow = true;
             scene.add(cabTop);
 
             const cabBack = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.5, 2), mats.woodFloor);
@@ -397,10 +399,11 @@
             vase.position.set(-1.25, 1.025, 1.2);
             scene.add(vase);
 
+            // 橡木格柵 (退到最左邊，緊靠收納櫃)
             const gap = 0.22; 
             for(let i=0; i<6; i++) {
                 const slat = new THREE.Mesh(new THREE.BoxGeometry(0.06, 2.8, 0.12), mats.oakWood);
-                slat.position.set(0.2 + (i * gap), 1.4, 0);
+                slat.position.set(-0.94 + (i * gap), 1.4, 0);
                 slat.castShadow = true; slat.receiveShadow = true;
                 scene.add(slat);
             }
@@ -528,7 +531,8 @@
             const floor = new THREE.Mesh(new THREE.PlaneGeometry(10, 10), mats.woodFloor);
             floor.rotation.x = -Math.PI/2; scene.add(floor);
 
-            const mainWall = new THREE.Mesh(new THREE.BoxGeometry(8, 3.2, 0.2), mats.sageWall); mainWall.position.set(0, 1.6, -3); scene.add(mainWall);
+            // 主牆改為白色 (mats.whiteWall)
+            const mainWall = new THREE.Mesh(new THREE.BoxGeometry(8, 3.2, 0.2), mats.whiteWall); mainWall.position.set(0, 1.6, -3); scene.add(mainWall);
             const rightWall = new THREE.Mesh(new THREE.BoxGeometry(0.2, 3.2, 8), mats.wall); rightWall.position.set(3.5, 1.6, 0); scene.add(rightWall);
             const frontWall = new THREE.Mesh(new THREE.BoxGeometry(8, 3.2, 0.2), mats.wall); frontWall.position.set(0, 1.6, 2.5); scene.add(frontWall);
 
@@ -566,7 +570,6 @@
             roomLight.position.set(0, 2.5, 2);
             scene.add(roomLight);
             
-            // 內部儲藏室輔助光源
             const innerLight = new THREE.PointLight('#ffddaa', 0.5, 4);
             innerLight.position.set(-1.2, 2.2, -0.6);
             scene.add(innerLight);
@@ -575,19 +578,15 @@
             floor.rotation.x = -Math.PI / 2; floor.receiveShadow = true;
             scene.add(floor);
 
-            // 背牆 (大幅退後產生步入式深度)
             const backWall = new THREE.Mesh(new THREE.BoxGeometry(6, 3, 0.2), mats.wall);
             backWall.position.set(0, 1.5, -1.5); backWall.receiveShadow = true; scene.add(backWall);
 
-            // 隔間牆 (劃分左側儲藏室與中間通道)
             const dividerWall = new THREE.Mesh(new THREE.BoxGeometry(0.1, 3, 1.3), mats.wall);
             dividerWall.position.set(-0.6, 1.5, -0.85); dividerWall.receiveShadow = true; scene.add(dividerWall);
 
-            // 右側隔間牆 (劃分中間與右側)
             const rightDividerWall = new THREE.Mesh(new THREE.BoxGeometry(0.1, 3, 1.3), mats.wall);
             rightDividerWall.position.set(0.6, 1.5, -0.85); rightDividerWall.receiveShadow = true; scene.add(rightDividerWall);
 
-            // (1) 中間：通道門片 (與外部牆面齊平 z = -0.3)
             const centerWallTop = new THREE.Mesh(new THREE.BoxGeometry(1.1, 0.8, 0.2), mats.wall);
             centerWallTop.position.set(0, 2.6, -0.3); scene.add(centerWallTop);
             
@@ -600,11 +599,9 @@
             handle.position.set(0.35, 1.0, -0.27); doorGroup.add(handle);
             scene.add(doorGroup);
 
-            // (2) 左側：木作隔間儲藏室 (Walk-in 空間)
             const storageGroup = new THREE.Group();
             storageGroup.position.set(-1.25, 0, 0); 
             
-            // 木作隔間前牆 (將畸零空間完全包覆，對齊 z = -0.3)
             const sWallLeft = new THREE.Mesh(new THREE.BoxGeometry(0.2, 3, 0.05), mats.oakWood);
             sWallLeft.position.set(-0.55, 1.5, -0.3); storageGroup.add(sWallLeft);
             const sWallRight = new THREE.Mesh(new THREE.BoxGeometry(0.1, 3, 0.05), mats.oakWood);
@@ -612,17 +609,15 @@
             const sWallTop = new THREE.Mesh(new THREE.BoxGeometry(1.05, 0.8, 0.05), mats.oakWood);
             sWallTop.position.set(0.025, 2.6, -0.3); storageGroup.add(sWallTop);
 
-            // 儲藏室隱藏木門 (設定為向外開啟狀態，方便檢視內部)
             const sDoorPivot = new THREE.Group();
-            sDoorPivot.position.set(0.55, 1.1, -0.3); // 鉸鏈在右側
+            sDoorPivot.position.set(0.55, 1.1, -0.3);
             const sFrontDoor = new THREE.Mesh(new THREE.BoxGeometry(1.05, 2.2, 0.04), mats.oakWood);
-            sFrontDoor.position.set(-0.525, 0, 0); // 門片相對於鉸鏈的位置
+            sFrontDoor.position.set(-0.525, 0, 0);
             sFrontDoor.castShadow = true; sFrontDoor.receiveShadow = true;
             sDoorPivot.add(sFrontDoor);
-            sDoorPivot.rotation.y = Math.PI / 2.2; // 開門角度
+            sDoorPivot.rotation.y = Math.PI / 2.2;
             storageGroup.add(sDoorPivot);
 
-            // 內部：獨立收納層架 (藏在空間深處)
             const shelfWidth = 1.0;
             const shelfDepth = 0.4;
             for(let i=0; i<4; i++) {
@@ -632,11 +627,9 @@
                 storageGroup.add(shelf);
             }
 
-            // 行李箱 (平推入內部區)
             const lugBody = new THREE.Mesh(new THREE.BoxGeometry(0.45, 0.73, 0.3), mats.luggageMat);
             lugBody.position.set(0.1, 0.38, -1.0); lugBody.castShadow = true; storageGroup.add(lugBody);
             
-            // 洞洞板與吸塵器 (內部左側牆)
             const pbBase = new THREE.Mesh(new THREE.BoxGeometry(0.02, 1.4, 0.6), mats.pegboardMat);
             pbBase.position.set(-0.6, 1.5, -1.0); storageGroup.add(pbBase);
             const vacBody = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 0.6), mats.luggageMat);
@@ -644,13 +637,11 @@
 
             scene.add(storageGroup);
 
-            // (3) 右側：中島型電器櫃
             const appGroup = new THREE.Group();
             appGroup.position.set(1.25, 0, 0);
             const aCabWidth = 1.0;
             const aCabDepth = 0.55;
             
-            // 櫃體對齊整體的 z = -0.3
             const aBase = new THREE.Mesh(new THREE.BoxGeometry(aCabWidth, 0.9, aCabDepth), mats.cabinetMat);
             aBase.position.set(0, 0.45, -0.3 - aCabDepth/2); aBase.castShadow = true; aBase.receiveShadow = true;
             appGroup.add(aBase);
@@ -677,18 +668,21 @@
             scene.add(appGroup);
         }
 
-        // --- Render Loop & Events ---
         function onWindowResize() {
             const visualPanel = document.getElementById('visual-panel');
-            camera.aspect = visualPanel.clientWidth / visualPanel.clientHeight;
-            camera.updateProjectionMatrix();
-            renderer.setSize(visualPanel.clientWidth, visualPanel.clientHeight);
+            if (camera && renderer) {
+                camera.aspect = visualPanel.clientWidth / visualPanel.clientHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(visualPanel.clientWidth, visualPanel.clientHeight);
+            }
         }
 
         function animate() {
             animationId = requestAnimationFrame(animate);
-            if(controls) controls.update();
-            if(renderer && scene && camera) renderer.render(scene, camera);
+            if(controls && document.getElementById('webgl-canvas').style.display !== 'none') {
+                controls.update();
+                if(renderer && scene && camera) renderer.render(scene, camera);
+            }
         }
 
         // Init App
